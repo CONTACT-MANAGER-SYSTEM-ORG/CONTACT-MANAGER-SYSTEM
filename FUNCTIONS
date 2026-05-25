@@ -1,0 +1,167 @@
+import tkinter as tk
+from tkinter import messagebox, ttk
+
+FILE = "contacts.txt"
+
+
+def load_contacts():
+    contacts = []
+    try:
+        with open(FILE, "r") as f:
+            for line in f:
+                parts = line.strip().split("|")
+                if len(parts) == 3:
+                    contacts.append(parts)
+    except FileNotFoundError:
+        pass
+    return contacts
+
+tk.Label(form, text="Name:",    **L).grid(row=0, column=0, sticky="w", pady=5)
+entry_name = tk.Entry(form, **E)
+entry_name.grid(row=0, column=1, pady=5, ipady=5)
+
+tk.Label(form, text="Number:", **L).grid(row=1, column=0, sticky="w", pady=5)
+entry_number = tk.Entry(form, **E)
+entry_number.grid(row=1, column=1, pady=5, ipady=5)
+
+tk.Label(form, text="Address:", **L).grid(row=2, column=0, sticky="w", pady=5)
+entry_address = tk.Entry(form, **E)
+entry_address.grid(row=2, column=1, pady=5, ipady=5)
+
+tk.Button(form, text="Add",    bg="#27ae60", command=add_contact,    **B).grid(row=3, columnspan=2, pady=3)
+tk.Button(form, text="Update", bg="#2980b9", command=update_contact, **B).grid(row=4, columnspan=2, pady=3)
+tk.Button(form, text="Delete", bg="#e74c3c", command=delete_contact, **B).grid(row=5, columnspan=2, pady=3)
+
+
+contact_list_table = tk.LabelFrame(main, text="Contact Records",
+                      font=("Century Gothic", 10, "bold"),
+                      bg="#52b6eb", fg="white", padx=5, pady=5)
+contact_list_table.pack(side="left", fill="both", expand=True)
+
+style = ttk.Style()
+style.theme_use("clam")
+style.configure("Treeview", font=("Century Gothic", 10), rowheight=26,
+                background="#f7fbff", fieldbackground="#f7fbff", foreground="#1a1a2e")
+style.configure("Treeview.Heading", font=("Century Gothic", 10, "bold"),
+                background="#1a6fa8", foreground="white")
+style.map("Treeview", background=[("selected", "#2980b9")])
+
+cols = ["#", "Name", "Number", "Address"]
+
+table = ttk.Treeview(contact_list_table, columns=cols, show="headings")
+
+for col in cols:
+    table.heading(col, text=col, anchor="center")
+    table.column(col, width=100, anchor="center")
+
+scrollbar = ttk.Scrollbar(contact_list_table, orient="vertical", command=table.yview)
+table.configure(yscrollcommand=scrollbar.set)
+table.pack(side="left", fill="both", expand=True)
+scrollbar.pack(side="right", fill="y")
+table.bind("<<TreeviewSelect>>", on_row_click)
+
+refresh_table()
+window.mainloop() def save_contacts(contacts):
+    with open(FILE, "w") as f:
+        for c in contacts:
+            f.write(c[0] + "|" + c[1] + "|" + c[2] + "\n")
+
+
+
+def refresh_table():
+    table.delete(*table.get_children())
+    for i, c in enumerate(load_contacts()):
+        table.insert("", "end", values=(i + 1, c[0], c[1], c[2]))
+
+
+
+def on_row_click(event):
+    selected = table.selection()
+    if not selected:
+        return
+    values = table.item(selected[0])["values"]
+    entry_name.delete(0, tk.END)
+    entry_number.delete(0, tk.END)
+    entry_address.delete(0, tk.END)
+    entry_name.insert(0, values[1])
+    entry_number.insert(0, values[2])
+    entry_address.insert(0, values[3])
+
+
+
+def clear_fields():
+    entry_name.delete(0, tk.END)
+    entry_number.delete(0, tk.END)
+    entry_address.delete(0, tk.END)
+
+
+
+def add_contact():
+    name    = entry_name.get().strip()
+    number  = entry_number.get().strip()
+    address = entry_address.get().strip()
+
+    if not name or not number or not address:
+        messagebox.showwarning("Empty Fields", "Please fill in all fields.")
+        return
+    if not number.replace("+", "").replace("-", "").isdigit():
+        messagebox.showwarning("Invalid Number", "Number must be digits only.")
+        return
+
+    contacts = load_contacts()
+    contacts.append([name, number, address])
+    save_contacts(contacts)
+    refresh_table()
+    clear_fields()
+    messagebox.showinfo("Success", f'"{name}" added!')
+
+
+
+def update_contact():
+    selected = table.selection()
+    if not selected:
+        messagebox.showwarning("No Selection", "Click a contact row first.")
+        return
+
+    name    = entry_name.get().strip()
+    number  = entry_number.get().strip()
+    address = entry_address.get().strip()
+
+    if not name or not number or not address:
+        messagebox.showwarning("Empty Fields", "Please fill in all fields.")
+        return
+
+    contacts = load_contacts()
+    index = table.index(selected[0])
+    contacts[index] = [name, number, address]
+    save_contacts(contacts)
+    refresh_table()
+    clear_fields()
+    messagebox.showinfo("Success", f'"{name}" updated!')
+
+
+
+def delete_contact():
+    selected = table.selection()
+    if not selected:
+        messagebox.showwarning("No Selection", "Click a contact row first.")
+        return
+
+    name = table.item(selected[0])["values"][1]
+    if messagebox.askyesno("Confirm", f'Delete "{name}"?'):
+        contacts = load_contacts()
+        contacts.pop(table.index(selected[0]))
+        save_contacts(contacts)
+        refresh_table()
+        clear_fields()
+
+
+def search_contact(*args):
+    query = search_var.get().strip().lower()
+    if not query:
+        refresh_table()
+        return
+    table.delete(*table.get_children())
+    for i, c in enumerate(load_contacts()):
+        if query in c[0].lower() or query in c[1] or query in c[2].lower():
+            table.insert("", "end", values=(i + 1, c[0], c[1], c[2]))
