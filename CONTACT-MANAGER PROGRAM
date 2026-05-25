@@ -1,0 +1,17 @@
+import tkinter as tk
+from tkinter import messagebox, ttk
+
+FILE = "contacts.txt"
+
+
+def load_contacts():
+    contacts = []
+    try:
+        with open(FILE, "r") as f:
+            for line in f:
+                parts = line.strip().split("|")
+                if len(parts) == 3:
+                    contacts.append(parts)
+    except FileNotFoundError:
+        pass
+    return contacts
